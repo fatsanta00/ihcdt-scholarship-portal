@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db" // or use env("DATABASE_URL") with fallback
+}
+
+model Application {
+  id               String   @id @default(uuid())
+  reference_number String   @unique
+  full_name        String
+  address          String
+  state_of_origin  String
+  phone            String
+  email            String
+  student_category String
+  institution      String
+  faculty          String
+  department       String
+  course           String
+  level            String
+  matric_number    String?
+  jamb_number      String?
+  status           String   @default("Submitted") // Submitted, Under Review, Verified, Rejected
+  submitted_at     DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  is_ibeno_origin  Boolean
+
+  documents        Document[]
+}
+
+model Document {
+  id                String   @id @default(uuid())
+  application_id    String
+  document_type     String
+  original_filename String
+  storage_path      String
+  mime_type         String
+  file_size         Int
+  uploaded_at       DateTime @default(now())
+
+  application       Application @relation(fields: [application_id], references: [id], onDelete: Cascade)
+}
