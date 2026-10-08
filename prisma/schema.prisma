@@ -21,9 +21,9 @@ model Application {
   student_category String
   institution      String
   faculty          String
-  department       String
   course           String
   level            String
+  cgpa             String?
   matric_number    String?
   jamb_number      String?
   status           String   @default("Submitted") // Submitted, Under Review, Verified, Rejected

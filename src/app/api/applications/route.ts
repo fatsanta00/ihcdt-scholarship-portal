@@ -31,15 +31,23 @@ export async function POST(req: NextRequest) {
     const student_category = formData.get('student_category') as string; // 'fresh' or 'returning'
     const institution = formData.get('institution') as string;
     const faculty = formData.get('faculty') as string;
-    const department = formData.get('department') as string;
     const course = formData.get('course') as string;
     const level = formData.get('level') as string;
+    const cgpa = (formData.get('cgpa') as string) || null;
     const matric_number = (formData.get('matric_number') as string) || null;
     const jamb_number = (formData.get('jamb_number') as string) || null;
     const is_ibeno_origin = formData.get('is_ibeno_origin') === 'true';
 
     if (!is_ibeno_origin) {
       return NextResponse.json({ error: 'This scholarship is intended only for students of Ibeno origin.' }, { status: 400 });
+    }
+
+    // Validate JAMB/Matric logic based on category
+    if (student_category === 'fresh' && !jamb_number) {
+        return NextResponse.json({ error: 'JAMB Registration Number is required for Fresh Intakes.' }, { status: 400 });
+    }
+    if (student_category === 'returning' && !matric_number) {
+        return NextResponse.json({ error: 'Matriculation Number is required for Returning Students.' }, { status: 400 });
     }
 
     // Determine required documents
@@ -49,12 +57,17 @@ export async function POST(req: NextRequest) {
     const uploadedFiles: { docType: string, file: File }[] = [];
     
     for (const reqDoc of requiredDocs) {
-      const file = formData.get(`doc_${reqDoc.id}`) as File;
-      if (reqDoc.required && (!file || !(file instanceof Blob) || file.size === 0)) {
+      // Allow multiple files for a specific requirement (like previous_school_fees)
+      const files = formData.getAll(`doc_${reqDoc.id}`) as File[];
+      
+      if (reqDoc.required && (!files || files.length === 0 || files[0].size === 0)) {
         return NextResponse.json({ error: `Missing required document: ${reqDoc.name}` }, { status: 400 });
       }
-      if (file && file.size > 0) {
-        uploadedFiles.push({ docType: reqDoc.name, file });
+      
+      for (const file of files) {
+          if (file && file.size > 0) {
+            uploadedFiles.push({ docType: reqDoc.name, file });
+          }
       }
     }
 
@@ -73,9 +86,9 @@ export async function POST(req: NextRequest) {
           student_category: student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student',
           institution,
           faculty,
-          department,
           course,
           level,
+          cgpa,
           matric_number,
           jamb_number,
           is_ibeno_origin,
@@ -93,7 +106,7 @@ export async function POST(req: NextRequest) {
             original_filename: file.name,
             mime_type: savedFile.mimeType,
             file_size: savedFile.size,
-            storage_path: savedFile.filename, // we just store the safe uuid filename
+            storage_path: savedFile.filePath, // using Vercel Blob URL now!
           }
         });
       }
