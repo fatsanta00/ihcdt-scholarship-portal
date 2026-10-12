@@ -128,16 +128,16 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
                 <span className="text-slate-800 font-medium col-span-2">{application.faculty}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
-                <span className="text-slate-500 font-semibold col-span-1">Department</span>
-                <span className="text-slate-800 font-medium col-span-2">{application.department}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
-                <span className="text-slate-500 font-semibold col-span-1">Course</span>
+                <span className="text-slate-500 font-semibold col-span-1">Department / Course</span>
                 <span className="text-slate-800 font-medium col-span-2">{application.course}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
                 <span className="text-slate-500 font-semibold col-span-1">Level</span>
                 <span className="text-slate-800 font-medium col-span-2">{application.level}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
+                <span className="text-slate-500 font-semibold col-span-1">CGPA</span>
+                <span className="text-slate-800 font-medium col-span-2">{application.cgpa || '-'}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
                 <span className="text-slate-500 font-semibold col-span-1">Matric Number</span>
