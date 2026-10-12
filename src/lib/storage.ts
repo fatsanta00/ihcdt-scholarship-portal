@@ -3,7 +3,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { siteConfig } from '@/config';
 import path from 'path';
 
-export async function saveDocument(buffer: Buffer, originalName: string, mimeType: string) {
+export async function saveDocument(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string,
+  folder?: string,
+  docType?: string
+) {
   if (!siteConfig.allowedFileTypes.includes(mimeType)) {
     throw new Error('Invalid file type');
   }
@@ -17,19 +23,22 @@ export async function saveDocument(buffer: Buffer, originalName: string, mimeTyp
       throw new Error('Invalid file extension');
   }
   
-  const filename = `${uuidv4()}${ext}`;
+  const baseName = path.basename(originalName, ext).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+  const docPrefix = docType ? docType.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30) : '';
+  const fileKey = `${docPrefix ? docPrefix + '_' : ''}${baseName}_${uuidv4().slice(0, 8)}${ext}`;
+  const pathname = folder ? `${folder}/${fileKey}` : fileKey;
 
   // Upload to Vercel Blob (handling both private and public stores)
   let blob;
   try {
-    blob = await put(filename, buffer, {
+    blob = await put(pathname, buffer, {
       access: 'private',
-      addRandomSuffix: false, // We're already using UUID
+      addRandomSuffix: false,
       contentType: mimeType,
     });
   } catch (err: any) {
     if (err?.message?.includes('public') || err?.message?.includes('private')) {
-      blob = await put(filename, buffer, {
+      blob = await put(pathname, buffer, {
         access: 'public',
         addRandomSuffix: false,
         contentType: mimeType,
@@ -40,7 +49,7 @@ export async function saveDocument(buffer: Buffer, originalName: string, mimeTyp
   }
 
   return {
-    filename,
+    filename: pathname,
     filePath: blob.url, // Store the blob URL in the DB instead of local path
     mimeType,
     size: buffer.length

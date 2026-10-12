@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
       for (const { docType, file } of uploadedFiles) {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const savedFile = await saveDocument(buffer, file.name, file.type);
+        const savedFile = await saveDocument(buffer, file.name, file.type, reference_number, docType);
         
         await tx.document.create({
           data: {
