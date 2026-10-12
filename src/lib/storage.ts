@@ -19,12 +19,25 @@ export async function saveDocument(buffer: Buffer, originalName: string, mimeTyp
   
   const filename = `${uuidv4()}${ext}`;
 
-  // Upload to Vercel Blob
-  const blob = await put(filename, buffer, {
-    access: 'public',
-    addRandomSuffix: false, // We're already using UUID
-    contentType: mimeType,
-  });
+  // Upload to Vercel Blob (handling both private and public stores)
+  let blob;
+  try {
+    blob = await put(filename, buffer, {
+      access: 'private',
+      addRandomSuffix: false, // We're already using UUID
+      contentType: mimeType,
+    });
+  } catch (err: any) {
+    if (err?.message?.includes('public') || err?.message?.includes('private')) {
+      blob = await put(filename, buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: mimeType,
+      });
+    } else {
+      throw err;
+    }
+  }
 
   return {
     filename,
@@ -35,13 +48,15 @@ export async function saveDocument(buffer: Buffer, originalName: string, mimeTyp
 }
 
 export async function getDocumentBuffer(filenameOrUrl: string) {
-    // In local dev, it was filename. Now it's a URL. We can fetch it.
-    // If it's a URL, we fetch it and return the buffer.
-    const url = filenameOrUrl.startsWith('http') ? filenameOrUrl : filenameOrUrl; // Assume it's a URL now because Vercel Blob returns a URL
+    const url = filenameOrUrl.startsWith('http') ? filenameOrUrl : filenameOrUrl;
+    const headers: Record<string, string> = {};
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      headers['authorization'] = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+    }
     
-    const response = await fetch(url);
+    const response = await fetch(url, { headers });
     if (!response.ok) {
-        throw new Error('Failed to fetch document');
+        throw new Error(`Failed to fetch document: ${response.statusText}`);
     }
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
