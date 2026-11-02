@@ -256,8 +256,9 @@ export default function ApplicationForm() {
                 {formData.student_category === 'fresh' && (
                   <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
                     <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number</label>
-                    <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                    <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                     {errors.jamb_number && <p className="text-red-500 text-sm mt-1 font-medium">{errors.jamb_number}</p>}
+                    <p className="text-xs text-slate-500 mt-1">Enter your JAMB number as it appears on your result slip (letters will be converted to uppercase automatically).</p>
                   </div>
                 )}
 
@@ -265,8 +266,9 @@ export default function ApplicationForm() {
                   <>
                     <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
                       <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Matriculation Number</label>
-                      <input type="text" name="matric_number" value={formData.matric_number || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                      <input type="text" name="matric_number" value={formData.matric_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                       {errors.matric_number && <p className="text-red-500 text-sm mt-1 font-medium">{errors.matric_number}</p>}
+                      <p className="text-xs text-slate-500 mt-1">Enter your matriculation number as it appears on your student ID (letters will be converted to uppercase automatically).</p>
                     </div>
                     <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
                       <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number (Optional)</label>

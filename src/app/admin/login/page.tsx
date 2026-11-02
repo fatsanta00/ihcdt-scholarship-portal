@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -49,14 +50,24 @@ export default function AdminLogin() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
-            <input 
-              type="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 outline-none"
-              placeholder="Enter admin password"
-              required
-            />
+            <div className="relative">
+              <input 
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3 pr-12 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 outline-none text-slate-900 bg-white placeholder:text-slate-400"
+                placeholder="Enter admin password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
           
           {error && <p className="text-red-500 text-sm">{error}</p>}
