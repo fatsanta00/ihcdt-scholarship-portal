@@ -66,11 +66,11 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
                 await updateApplicationStatus(application.id, newStatus);
               }
             }} className="mt-4 flex gap-2">
-              <select name="status" defaultValue={application.status} className="p-2 border border-slate-300 rounded-lg text-sm focus:outline-none">
-                <option value="Submitted">Submitted</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Verified">Verified</option>
-                <option value="Rejected">Rejected</option>
+              <select name="status" defaultValue={application.status} className="p-2 border border-slate-300 rounded-lg text-sm focus:outline-none text-slate-800 bg-white font-medium">
+                <option value="Submitted" className="text-slate-800 bg-white">Submitted</option>
+                <option value="Under Review" className="text-slate-800 bg-white">Under Review</option>
+                <option value="Verified" className="text-slate-800 bg-white">Verified</option>
+                <option value="Rejected" className="text-slate-800 bg-white">Rejected</option>
               </select>
               <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-900 transition-colors">
                 Update
