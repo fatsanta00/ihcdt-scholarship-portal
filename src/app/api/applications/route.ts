@@ -50,6 +50,36 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Matriculation Number is required for Returning Students.' }, { status: 400 });
     }
 
+    // Normalize identifiers: trim whitespace and uppercase
+    const normalizedJamb = jamb_number ? jamb_number.trim().toUpperCase() : null;
+    const normalizedMatric = matric_number ? matric_number.trim().toUpperCase() : null;
+
+    // Duplicate check — prevent re-applications using same JAMB or Matric number
+    if (normalizedJamb) {
+      const existingByJamb = await db.application.findFirst({
+        where: { jamb_number: normalizedJamb },
+        select: { id: true, reference_number: true },
+      });
+      if (existingByJamb) {
+        return NextResponse.json(
+          { error: `An application with this JAMB Registration Number already exists (Ref: ${existingByJamb.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
+          { status: 409 }
+        );
+      }
+    }
+    if (normalizedMatric) {
+      const existingByMatric = await db.application.findFirst({
+        where: { matric_number: normalizedMatric },
+        select: { id: true, reference_number: true },
+      });
+      if (existingByMatric) {
+        return NextResponse.json(
+          { error: `An application with this Matriculation Number already exists (Ref: ${existingByMatric.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
+          { status: 409 }
+        );
+      }
+    }
+
     // Determine required documents
     const requiredDocs = student_category === 'fresh' ? documentRequirements.fresh : documentRequirements.returning;
     
@@ -89,8 +119,8 @@ export async function POST(req: NextRequest) {
           course,
           level,
           cgpa,
-          matric_number,
-          jamb_number,
+          matric_number: normalizedMatric,
+          jamb_number: normalizedJamb,
           is_ibeno_origin,
         },
       });
@@ -120,6 +150,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, reference_number: result.reference_number });
   } catch (error: any) {
     console.error('Application submission error:', error);
+    if (error?.code === 'P2002') {
+      return NextResponse.json({ error: 'A duplicate application was detected. Please ensure your registration numbers are correct.' }, { status: 409 });
+    }
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

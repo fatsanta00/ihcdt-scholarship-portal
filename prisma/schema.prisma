@@ -32,6 +32,14 @@ model Application {
   is_ibeno_origin  Boolean
 
   documents        Document[]
+
+  @@index([status])
+  @@index([student_category])
+  @@index([submitted_at])
+  @@index([full_name])
+  @@index([institution])
+  @@index([matric_number])
+  @@index([jamb_number])
 }
 
 model Document {

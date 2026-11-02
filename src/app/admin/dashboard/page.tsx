@@ -8,9 +8,11 @@ export const dynamic = 'force-dynamic';
 export default async function AdminDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; type?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; type?: string; page?: string }>;
 }) {
-  const { q, status, type } = await searchParams;
+  const { q, status, type, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam || '1', 10));
+  const PAGE_SIZE = 25;
 
   const where: any = {};
   if (q) {
@@ -23,16 +25,21 @@ export default async function AdminDashboard({
   if (status) where.status = status;
   if (type) where.student_category = type;
 
-  const [applications, totalCount, freshCount, returningCount, verifiedCount] = await Promise.all([
+  const [applications, totalCount, filteredCount, freshCount, returningCount, verifiedCount] = await Promise.all([
     db.application.findMany({
       where,
       orderBy: { submitted_at: 'desc' },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
     }),
     db.application.count(),
+    db.application.count({ where }),
     db.application.count({ where: { student_category: 'Fresh Intake' } }),
     db.application.count({ where: { student_category: 'Returning Student' } }),
     db.application.count({ where: { status: 'Verified' } }),
   ]);
+
+  const totalPages = Math.ceil(filteredCount / PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
@@ -90,17 +97,17 @@ export default async function AdminDashboard({
                 defaultValue={q}
                 className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 flex-1 md:w-64"
               />
-              <select name="status" defaultValue={status} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500">
-                <option value="">All Statuses</option>
-                <option value="Submitted">Submitted</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Verified">Verified</option>
-                <option value="Rejected">Rejected</option>
+              <select name="status" defaultValue={status} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-800 bg-white">
+                <option value="" className="text-slate-800 bg-white">All Statuses</option>
+                <option value="Submitted" className="text-slate-800 bg-white">Submitted</option>
+                <option value="Under Review" className="text-slate-800 bg-white">Under Review</option>
+                <option value="Verified" className="text-slate-800 bg-white">Verified</option>
+                <option value="Rejected" className="text-slate-800 bg-white">Rejected</option>
               </select>
-              <select name="type" defaultValue={type} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500">
-                <option value="">All Types</option>
-                <option value="Fresh Intake">Fresh Intake</option>
-                <option value="Returning Student">Returning</option>
+              <select name="type" defaultValue={type} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-800 bg-white">
+                <option value="" className="text-slate-800 bg-white">All Types</option>
+                <option value="Fresh Intake" className="text-slate-800 bg-white">Fresh Intake</option>
+                <option value="Returning Student" className="text-slate-800 bg-white">Returning</option>
               </select>
               <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-slate-900 transition-colors">
                 Filter
@@ -155,6 +162,28 @@ export default async function AdminDashboard({
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="p-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600">
+            <span>
+              Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCount)}–{Math.min(page * PAGE_SIZE, filteredCount)} of {filteredCount} applications
+            </span>
+            <div className="flex gap-2">
+              {page > 1 && (
+                <Link href={`?${new URLSearchParams({ ...(q ? {q} : {}), ...(status ? {status} : {}), ...(type ? {type} : {}), page: String(page - 1) })}`}
+                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded font-semibold transition-colors">
+                  ← Prev
+                </Link>
+              )}
+              <span className="px-3 py-1 bg-slate-800 text-white rounded font-semibold">{page}</span>
+              {page < totalPages && (
+                <Link href={`?${new URLSearchParams({ ...(q ? {q} : {}), ...(status ? {status} : {}), ...(type ? {type} : {}), page: String(page + 1) })}`}
+                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded font-semibold transition-colors">
+                  Next →
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </main>
