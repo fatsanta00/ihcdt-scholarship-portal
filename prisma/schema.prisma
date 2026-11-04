@@ -24,8 +24,8 @@ model Application {
   course           String
   level            String
   cgpa             String?
-  matric_number    String?
-  jamb_number      String?
+  matric_number    String?  @unique
+  jamb_number      String?  @unique
   status           String   @default("Submitted") // Submitted, Under Review, Verified, Rejected
   submitted_at     DateTime @default(now())
   updated_at       DateTime @updatedAt

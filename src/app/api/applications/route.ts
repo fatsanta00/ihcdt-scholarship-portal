@@ -142,6 +142,9 @@ export async function POST(req: NextRequest) {
       }
 
       return application;
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     // Send email asynchronously without blocking the response

@@ -2,6 +2,7 @@ import { put } from '@vercel/blob';
 import { v4 as uuidv4 } from 'uuid';
 import { siteConfig } from '@/config';
 import path from 'path';
+import fs from 'fs';
 
 export async function saveDocument(
   buffer: Buffer,
@@ -27,6 +28,21 @@ export async function saveDocument(
   const docPrefix = docType ? docType.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30) : '';
   const fileKey = `${docPrefix ? docPrefix + '_' : ''}${baseName}_${uuidv4().slice(0, 8)}${ext}`;
   const pathname = folder ? `${folder}/${fileKey}` : fileKey;
+
+  // Local storage fallback for local development or isolated testing
+  if (!process.env.BLOB_READ_WRITE_TOKEN || process.env.LOCAL_STORAGE === 'true') {
+    const localStorageDir = path.resolve('.local_storage', folder || '');
+    await fs.promises.mkdir(localStorageDir, { recursive: true });
+    const fullPath = path.resolve('.local_storage', pathname);
+    await fs.promises.writeFile(fullPath, buffer);
+
+    return {
+      filename: pathname,
+      filePath: `file://${fullPath}`,
+      mimeType,
+      size: buffer.length
+    };
+  }
 
   // Upload to Vercel Blob (handling both private and public stores)
   let blob;
@@ -57,6 +73,11 @@ export async function saveDocument(
 }
 
 export async function getDocumentBuffer(filenameOrUrl: string) {
+    if (filenameOrUrl.startsWith('file://')) {
+      const localFilePath = filenameOrUrl.replace(/^file:\/\//, '');
+      return await fs.promises.readFile(localFilePath);
+    }
+
     const url = filenameOrUrl.startsWith('http') ? filenameOrUrl : filenameOrUrl;
     const headers: Record<string, string> = {};
     if (process.env.BLOB_READ_WRITE_TOKEN) {

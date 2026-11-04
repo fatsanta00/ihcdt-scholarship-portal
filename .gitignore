@@ -46,6 +46,7 @@ next-env.d.ts
 
 # uploaded documents (sensitive)
 /storage/
+/.local_storage/
 
 # prisma local db
 /prisma/dev.db
