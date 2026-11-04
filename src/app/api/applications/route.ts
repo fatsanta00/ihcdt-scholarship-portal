@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const address = formData.get('address') as string;
     const state_of_origin = formData.get('state_of_origin') as string;
     const phone = formData.get('phone') as string;
-    const email = formData.get('email') as string;
+    const email = (formData.get('email') as string)?.trim().toLowerCase() || '';
     const student_category = formData.get('student_category') as string; // 'fresh' or 'returning'
     const institution = formData.get('institution') as string;
     const faculty = formData.get('faculty') as string;
@@ -69,6 +69,19 @@ export async function POST(req: NextRequest) {
     // Normalize identifiers: trim whitespace and uppercase
     const normalizedJamb = jamb_number ? jamb_number.trim().toUpperCase() : null;
     const normalizedMatric = matric_number ? matric_number.trim().toUpperCase() : null;
+
+    // Duplicate check — prevent re-applications using same email, JAMB or Matric number
+    // Email is already normalized (lowercase, trimmed) at parse time
+    const existingByEmail = await db.application.findFirst({
+      where: { email },
+      select: { id: true, reference_number: true },
+    });
+    if (existingByEmail) {
+      return NextResponse.json(
+        { error: `An application has already been submitted using this email address (Ref: ${existingByEmail.reference_number}). Each applicant may only submit one application. If you believe this is an error, please contact the IHCDT Secretariat.` },
+        { status: 409 }
+      );
+    }
 
     // Duplicate check — prevent re-applications using same JAMB or Matric number
     if (normalizedJamb) {

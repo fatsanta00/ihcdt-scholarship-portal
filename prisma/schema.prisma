@@ -17,7 +17,7 @@ model Application {
   address          String
   state_of_origin  String
   phone            String
-  email            String
+  email            String   @unique
   student_category String
   institution      String
   faculty          String
@@ -41,6 +41,7 @@ model Application {
   @@index([submitted_at])
   @@index([full_name])
   @@index([institution])
+  @@index([email])
   @@index([matric_number])
   @@index([jamb_number])
   @@index([nin])
