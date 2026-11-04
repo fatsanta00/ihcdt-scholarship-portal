@@ -70,44 +70,48 @@ export async function POST(req: NextRequest) {
     const normalizedJamb = jamb_number ? jamb_number.trim().toUpperCase() : null;
     const normalizedMatric = matric_number ? matric_number.trim().toUpperCase() : null;
 
-    // Duplicate check — prevent re-applications using same email, JAMB or Matric number
-    // Email is already normalized (lowercase, trimmed) at parse time
-    const existingByEmail = await db.application.findFirst({
-      where: { email },
-      select: { id: true, reference_number: true },
-    });
+    // ─── Concurrent duplicate checks ────────────────────────────────────────────
+    // All three lookups run simultaneously via Promise.all rather than sequentially.
+    // Each query uses an indexed column and selects only id + reference_number,
+    // so they are fast point-lookups regardless of dataset size.
+    const [existingByEmail, existingByJamb, existingByMatric] = await Promise.all([
+      db.application.findFirst({
+        where: { email },
+        select: { id: true, reference_number: true },
+      }),
+      normalizedJamb
+        ? db.application.findFirst({
+            where: { jamb_number: normalizedJamb },
+            select: { id: true, reference_number: true },
+          })
+        : Promise.resolve(null),
+      normalizedMatric
+        ? db.application.findFirst({
+            where: { matric_number: normalizedMatric },
+            select: { id: true, reference_number: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
     if (existingByEmail) {
       return NextResponse.json(
         { error: `An application has already been submitted using this email address (Ref: ${existingByEmail.reference_number}). Each applicant may only submit one application. If you believe this is an error, please contact the IHCDT Secretariat.` },
         { status: 409 }
       );
     }
-
-    // Duplicate check — prevent re-applications using same JAMB or Matric number
-    if (normalizedJamb) {
-      const existingByJamb = await db.application.findFirst({
-        where: { jamb_number: normalizedJamb },
-        select: { id: true, reference_number: true },
-      });
-      if (existingByJamb) {
-        return NextResponse.json(
-          { error: `An application with this JAMB Registration Number already exists (Ref: ${existingByJamb.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
-          { status: 409 }
-        );
-      }
+    if (existingByJamb) {
+      return NextResponse.json(
+        { error: `An application with this JAMB Registration Number already exists (Ref: ${existingByJamb.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
+        { status: 409 }
+      );
     }
-    if (normalizedMatric) {
-      const existingByMatric = await db.application.findFirst({
-        where: { matric_number: normalizedMatric },
-        select: { id: true, reference_number: true },
-      });
-      if (existingByMatric) {
-        return NextResponse.json(
-          { error: `An application with this Matriculation Number already exists (Ref: ${existingByMatric.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
-          { status: 409 }
-        );
-      }
+    if (existingByMatric) {
+      return NextResponse.json(
+        { error: `An application with this Matriculation Number already exists (Ref: ${existingByMatric.reference_number}). If you believe this is an error, please contact the IHCDT Secretariat.` },
+        { status: 409 }
+      );
     }
+    // ────────────────────────────────────────────────────────────────────────────
 
     // Determine required documents
     const requiredDocs = student_category === 'fresh' ? documentRequirements.fresh : documentRequirements.returning;

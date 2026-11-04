@@ -53,7 +53,7 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
             </div>
           </div>
           
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-start md:items-end w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
             <span className="text-sm font-semibold text-slate-500 mb-1">Status</span>
             <span className={`px-4 py-2 font-bold rounded-lg ${
                 application.status === 'Submitted' ? 'bg-blue-100 text-blue-700' :

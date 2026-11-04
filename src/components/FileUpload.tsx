@@ -82,38 +82,38 @@ export default function FileUpload({ id, title, required, files, error, multiple
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 mb-6 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex justify-between items-start mb-4">
-        <h4 className="font-extrabold text-slate-800 text-xl flex items-center">
-          {title} 
-          {required && <span className="text-red-600 ml-3 text-xs uppercase tracking-wide font-bold bg-red-50 border border-red-100 px-3 py-1 rounded-full">Required</span>}
+    <div className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3 sm:mb-4">
+        <h4 className="font-extrabold text-slate-800 text-base sm:text-xl flex flex-wrap items-center gap-2">
+          <span>{title}</span> 
+          {required && <span className="text-red-600 text-[11px] sm:text-xs uppercase tracking-wide font-bold bg-red-50 border border-red-100 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full shrink-0">Required</span>}
         </h4>
       </div>
       
       {multiple && maxFiles > 1 && (
-        <p className="text-sm text-slate-500 mb-4 font-medium">You can upload up to {maxFiles} files.</p>
+        <p className="text-xs sm:text-sm text-slate-500 mb-3 sm:mb-4 font-medium">You can upload up to {maxFiles} files.</p>
       )}
 
       {files.length > 0 && (
-        <div className="space-y-3 mb-4">
+        <div className="space-y-2.5 sm:space-y-3 mb-3 sm:mb-4">
           {files.map((file, idx) => (
-            <div key={idx} className="bg-brand-green-50 border border-brand-green-200 rounded-2xl p-4 flex items-center justify-between transform transition-all animate-pop">
-              <div className="flex items-center overflow-hidden">
-                <div className="bg-white p-2 rounded-xl shadow-sm mr-3 shrink-0">
-                  <FileIcon className="w-6 h-6 text-brand-green-600" />
+            <div key={idx} className="bg-brand-green-50 border border-brand-green-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between transform transition-all animate-pop">
+              <div className="flex items-center overflow-hidden min-w-0 pr-2">
+                <div className="bg-white p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-sm mr-2.5 sm:mr-3 shrink-0">
+                  <FileIcon className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green-600" />
                 </div>
-                <div className="truncate">
-                  <p className="font-extrabold text-brand-green-900 text-base truncate">{file.name}</p>
-                  <p className="text-xs font-bold text-brand-green-700">{formatSize(file.size)}</p>
+                <div className="truncate min-w-0">
+                  <p className="font-extrabold text-brand-green-900 text-sm sm:text-base truncate">{file.name}</p>
+                  <p className="text-[11px] sm:text-xs font-bold text-brand-green-700">{formatSize(file.size)}</p>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => removeFile(idx)} 
-                className="p-2 ml-2 text-slate-400 bg-white hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl shadow-sm transition-all"
+                className="p-1.5 sm:p-2 ml-1 text-slate-400 bg-white hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg sm:rounded-xl shadow-sm transition-all shrink-0 cursor-pointer"
                 title="Remove File"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
           ))}
@@ -122,7 +122,7 @@ export default function FileUpload({ id, title, required, files, error, multiple
 
       {(!files.length || (multiple && files.length < maxFiles)) && (
         <div 
-          className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer ${isDragging ? 'border-brand-green-500 bg-brand-green-50 scale-[1.02]' : 'border-slate-300 hover:border-brand-green-400 hover:bg-slate-50 hover:scale-[1.01]'}`}
+          className={`relative overflow-hidden border-2 border-dashed rounded-xl sm:rounded-2xl p-5 sm:p-8 text-center transition-all duration-300 cursor-pointer ${isDragging ? 'border-brand-green-500 bg-brand-green-50 scale-[1.01]' : 'border-slate-300 hover:border-brand-green-400 hover:bg-slate-50'}`}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -130,9 +130,9 @@ export default function FileUpload({ id, title, required, files, error, multiple
         >
           {isDragging && <div className="absolute inset-0 bg-brand-green-100 opacity-20 animate-pulse"></div>}
           <div className="relative z-10">
-            <UploadCloud className={`w-10 h-10 mx-auto mb-3 transition-colors duration-300 ${isDragging ? 'text-brand-green-600' : 'text-slate-400'}`} />
-            <p className="font-extrabold text-slate-700 text-lg mb-1">{files.length > 0 ? 'Click to add more files or drag and drop' : 'Click to upload or drag and drop'}</p>
-            <p className="text-xs text-slate-500 font-medium">
+            <UploadCloud className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 sm:mb-3 transition-colors duration-300 ${isDragging ? 'text-brand-green-600' : 'text-slate-400'}`} />
+            <p className="font-extrabold text-slate-700 text-sm sm:text-lg mb-1 leading-snug">{files.length > 0 ? 'Click to add more files or drag and drop' : 'Click to upload or drag and drop'}</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
               Accepted formats: {siteConfig.allowedFileExtensions.join(', ').toUpperCase()}<br/>
               Maximum size: <span className="font-bold">{formatSize(siteConfig.maxFileSize)}</span>
             </p>

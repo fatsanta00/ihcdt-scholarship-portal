@@ -91,31 +91,33 @@ export default async function AdminDashboard({
 
         {/* Filters & Table */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
             <h2 className="text-lg font-bold text-slate-800">Recent Applications</h2>
-            <form className="flex w-full md:w-auto gap-2">
+            <form className="flex flex-col sm:flex-row flex-wrap w-full md:w-auto gap-2">
               <input 
                 type="text" 
                 name="q" 
                 placeholder="Search name, ref, inst..." 
                 defaultValue={q}
-                className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 flex-1 md:w-64"
+                className="p-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 w-full sm:w-64"
               />
-              <select name="status" defaultValue={status} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-800 bg-white">
-                <option value="" className="text-slate-800 bg-white">All Statuses</option>
-                <option value="Submitted" className="text-slate-800 bg-white">Submitted</option>
-                <option value="Under Review" className="text-slate-800 bg-white">Under Review</option>
-                <option value="Verified" className="text-slate-800 bg-white">Verified</option>
-                <option value="Rejected" className="text-slate-800 bg-white">Rejected</option>
-              </select>
-              <select name="type" defaultValue={type} className="p-2 text-sm border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-slate-500 text-slate-800 bg-white">
-                <option value="" className="text-slate-800 bg-white">All Types</option>
-                <option value="Fresh Intake" className="text-slate-800 bg-white">Fresh Intake</option>
-                <option value="Returning Student" className="text-slate-800 bg-white">Returning</option>
-              </select>
-              <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-slate-900 transition-colors">
-                Filter
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select name="status" defaultValue={status} className="p-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-slate-800 bg-white flex-1 sm:flex-none">
+                  <option value="" className="text-slate-800 bg-white">All Statuses</option>
+                  <option value="Submitted" className="text-slate-800 bg-white">Submitted</option>
+                  <option value="Under Review" className="text-slate-800 bg-white">Under Review</option>
+                  <option value="Verified" className="text-slate-800 bg-white">Verified</option>
+                  <option value="Rejected" className="text-slate-800 bg-white">Rejected</option>
+                </select>
+                <select name="type" defaultValue={type} className="p-2.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-slate-800 bg-white flex-1 sm:flex-none">
+                  <option value="" className="text-slate-800 bg-white">All Types</option>
+                  <option value="Fresh Intake" className="text-slate-800 bg-white">Fresh Intake</option>
+                  <option value="Returning Student" className="text-slate-800 bg-white">Returning</option>
+                </select>
+                <button type="submit" className="bg-slate-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-900 transition-colors cursor-pointer shrink-0">
+                  Filter
+                </button>
+              </div>
             </form>
           </div>
           

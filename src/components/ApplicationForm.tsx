@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { siteConfig, documentRequirements } from '@/config';
 import FileUpload from './FileUpload';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 
 const STEPS = [
   'Student Category',
@@ -44,6 +44,7 @@ export default function ApplicationForm() {
   const [files, setFiles] = useState<Record<string, File[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'uploading' | 'saving' | 'done' | 'error'>('idle');
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -134,6 +135,7 @@ export default function ApplicationForm() {
     if (!validateStep()) return;
     
     setIsSubmitting(true);
+    setSubmitStatus('uploading');
     
     try {
       const submitData = new FormData();
@@ -147,6 +149,8 @@ export default function ApplicationForm() {
         });
       });
 
+      setSubmitStatus('saving');
+
       const res = await fetch('/api/applications', {
         method: 'POST',
         body: submitData,
@@ -158,8 +162,10 @@ export default function ApplicationForm() {
         throw new Error(data.error || 'Submission failed');
       }
 
+      setSubmitStatus('done');
       router.push(`/success/${data.reference_number}`);
     } catch (err: any) {
+      setSubmitStatus('error');
       setErrors({ submit: err.message });
       setIsSubmitting(false);
     }
@@ -167,20 +173,56 @@ export default function ApplicationForm() {
 
   return (
     <div className="max-w-4xl mx-auto bg-white/90 backdrop-blur-md rounded-3xl shadow-xl border border-slate-100 overflow-hidden animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-      {/* Progress Bar */}
-      <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200/80 px-6 py-5 flex flex-wrap justify-between items-center gap-2">
-        {STEPS.map((step, idx) => (
-          <div key={idx} className={`flex items-center text-sm font-bold transition-all duration-300 ${idx === currentStep ? 'text-brand-green-700 transform scale-105' : idx < currentStep ? 'text-brand-green-600' : 'text-slate-400'}`}>
-            <span className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 transition-all duration-300 shadow-sm ${idx === currentStep ? 'bg-brand-green-700 text-white shadow-md' : idx < currentStep ? 'bg-brand-green-100' : 'bg-slate-200 text-slate-500'}`}>
-              {idx < currentStep ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
-            </span>
-            <span className="hidden sm:inline">{step}</span>
-            {idx < STEPS.length - 1 && <ChevronRight className="w-5 h-5 mx-2 text-slate-300" />}
-          </div>
-        ))}
+      {/* Progress Bar — scrollable on small phones */}
+      <div className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200/80 px-3 sm:px-6 py-4">
+        <div className="flex items-center overflow-x-auto gap-0 scrollbar-hide">
+          {STEPS.map((step, idx) => (
+            <div key={idx} className={`flex items-center shrink-0 text-xs sm:text-sm font-bold transition-all duration-300 ${idx === currentStep ? 'text-brand-green-700' : idx < currentStep ? 'text-brand-green-600' : 'text-slate-400'}`}>
+              <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 shadow-sm text-xs sm:text-sm ${idx === currentStep ? 'bg-brand-green-700 text-white shadow-md' : idx < currentStep ? 'bg-brand-green-100 text-brand-green-700' : 'bg-slate-200 text-slate-500'}`}>
+                {idx < currentStep ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : idx + 1}
+              </span>
+              <span className="hidden md:inline ml-1.5 whitespace-nowrap">{step}</span>
+              {idx < STEPS.length - 1 && <ChevronRight className="w-4 h-4 mx-1 sm:mx-2 text-slate-300 shrink-0" />}
+            </div>
+          ))}
+        </div>
+        {/* Mobile step label */}
+        <div className="mt-2 md:hidden text-center text-xs font-bold text-brand-green-700">
+          Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep]}
+        </div>
       </div>
 
-      <div className="p-8 md:p-12 min-h-[400px]">
+      <div className="p-5 sm:p-8 md:p-12 min-h-[400px] relative">
+        {/* Full-screen submission overlay */}
+        {isSubmitting && (
+          <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center rounded-b-3xl">
+            <div className="flex flex-col items-center gap-5 text-center px-6">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full bg-brand-green-50 flex items-center justify-center">
+                  <Loader2 className="w-10 h-10 text-brand-green-600 animate-spin" />
+                </div>
+                <div className="absolute inset-0 rounded-full border-4 border-brand-green-200 animate-ping opacity-30" />
+              </div>
+              <div>
+                <p className="text-xl font-extrabold text-slate-800 mb-1">
+                  {submitStatus === 'uploading' ? 'Uploading Documents...' :
+                   submitStatus === 'saving' ? 'Saving Application...' :
+                   submitStatus === 'done' ? 'Submission Successful!' :
+                   'Submitting Application...'}
+                </p>
+                <p className="text-sm text-slate-500 font-medium max-w-xs mx-auto">
+                  Please wait while we securely process your application. Do not close this page.
+                </p>
+              </div>
+              <div className="flex gap-1.5 mt-2">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-2 h-2 rounded-full bg-brand-green-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {errors.submit && (
           <div className="mb-8 p-5 bg-red-50 text-red-700 border border-red-200 rounded-2xl flex items-start animate-pop">
             <AlertCircle className="w-6 h-6 mr-3 shrink-0 mt-0.5" />
@@ -190,23 +232,22 @@ export default function ApplicationForm() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           
-          {/* STEP 0: Category */}
           {currentStep === 0 && (
-            <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Student Category</h2>
-              <p className="text-lg text-slate-600 font-medium">Select your student category to view the required documents and fields.</p>
+            <div className="space-y-6 sm:space-y-8 animate-slide-in-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Student Category</h2>
+              <p className="text-base sm:text-lg text-slate-600 font-medium">Select your student category to view the required documents and fields.</p>
               
-              <div className="grid sm:grid-cols-2 gap-6">
-                <label className={`p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${formData.student_category === 'fresh' ? 'border-brand-green-500 bg-brand-green-50 shadow-lg scale-[1.02]' : 'border-slate-200 hover:border-brand-green-300 bg-white hover:shadow-md'}`}>
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                <label className={`p-5 sm:p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${formData.student_category === 'fresh' ? 'border-brand-green-500 bg-brand-green-50 shadow-lg scale-[1.02]' : 'border-slate-200 hover:border-brand-green-300 bg-white hover:shadow-md'}`}>
                   <input type="radio" name="student_category" value="fresh" checked={formData.student_category === 'fresh'} onChange={handleInputChange} className="sr-only" />
-                  <div className={`font-extrabold text-2xl mb-3 ${formData.student_category === 'fresh' ? 'text-brand-green-800' : 'text-slate-800'}`}>Fresh Intake</div>
-                  <p className="text-base text-slate-600 font-medium">For new students who are applying for the first time.</p>
+                  <div className={`font-extrabold text-xl sm:text-2xl mb-2 sm:mb-3 ${formData.student_category === 'fresh' ? 'text-brand-green-800' : 'text-slate-800'}`}>Fresh Intake</div>
+                  <p className="text-sm sm:text-base text-slate-600 font-medium">For new students who are applying for the first time.</p>
                 </label>
                 
-                <label className={`p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${formData.student_category === 'returning' ? 'border-brand-green-500 bg-brand-green-50 shadow-lg scale-[1.02]' : 'border-slate-200 hover:border-brand-green-300 bg-white hover:shadow-md'}`}>
+                <label className={`p-5 sm:p-8 border-2 rounded-2xl cursor-pointer transition-all duration-300 ${formData.student_category === 'returning' ? 'border-brand-green-500 bg-brand-green-50 shadow-lg scale-[1.02]' : 'border-slate-200 hover:border-brand-green-300 bg-white hover:shadow-md'}`}>
                   <input type="radio" name="student_category" value="returning" checked={formData.student_category === 'returning'} onChange={handleInputChange} className="sr-only" />
-                  <div className={`font-extrabold text-2xl mb-3 ${formData.student_category === 'returning' ? 'text-brand-green-800' : 'text-slate-800'}`}>Returning Student</div>
-                  <p className="text-base text-slate-600 font-medium">For students who have previously benefited or are returning students.</p>
+                  <div className={`font-extrabold text-xl sm:text-2xl mb-2 sm:mb-3 ${formData.student_category === 'returning' ? 'text-brand-green-800' : 'text-slate-800'}`}>Returning Student</div>
+                  <p className="text-sm sm:text-base text-slate-600 font-medium">For students who have previously benefited or are returning students.</p>
                 </label>
               </div>
               {errors.student_category && <p className="text-red-600 text-sm font-bold mt-2 animate-pop">{errors.student_category}</p>}
@@ -215,89 +256,89 @@ export default function ApplicationForm() {
 
           {/* STEP 1: Details */}
           {currentStep === 1 && (
-            <div className="space-y-8 animate-fade-in-up">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Applicant Details</h2>
+            <div className="space-y-6 sm:space-y-8 animate-fade-in-up">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 sm:pb-4">Applicant Details</h2>
               
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Full Name</label>
-                  <input type="text" name="full_name" value={formData.full_name || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Full Name</label>
+                  <input type="text" name="full_name" value={formData.full_name || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.full_name && <p className="text-red-500 text-sm mt-1 font-medium">{errors.full_name}</p>}
                 </div>
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Phone Number</label>
-                  <input type="tel" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Phone Number</label>
+                  <input type="tel" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.phone && <p className="text-red-500 text-sm mt-1 font-medium">{errors.phone}</p>}
                 </div>
                 <div className="col-span-2 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Email Address</label>
-                  <input type="email" name="email" value={formData.email || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Email Address</label>
+                  <input type="email" name="email" value={formData.email || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.email && <p className="text-red-500 text-sm mt-1 font-medium">{errors.email}</p>}
                 </div>
                 <div className="col-span-2 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Residential Address</label>
-                  <input type="text" name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Residential Address</label>
+                  <input type="text" name="address" value={formData.address || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.address && <p className="text-red-500 text-sm mt-1 font-medium">{errors.address}</p>}
                 </div>
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">State of Origin</label>
-                  <input type="text" name="state_of_origin" value={formData.state_of_origin || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">State of Origin</label>
+                  <input type="text" name="state_of_origin" value={formData.state_of_origin || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.state_of_origin && <p className="text-red-500 text-sm mt-1 font-medium">{errors.state_of_origin}</p>}
                 </div>
                 
                 {/* Ibeno Origin Check */}
-                <div className="col-span-2 bg-brand-gold-50 p-6 rounded-2xl border-2 border-brand-gold-200 mt-2 transition-all hover:border-brand-gold-400">
-                   <label className="block text-lg font-extrabold text-slate-800 mb-4">Are you of Ibeno origin? <span className="text-red-500">*</span></label>
-                   <div className="flex space-x-8">
-                     <label className="flex items-center space-x-3 cursor-pointer group">
-                       <input type="radio" name="is_ibeno_origin" value="true" checked={formData.is_ibeno_origin === 'true'} onChange={handleInputChange} className="w-6 h-6 text-brand-green-600 focus:ring-brand-green-600 border-slate-400" />
-                       <span className="text-xl text-slate-800 font-bold group-hover:text-brand-green-700 transition-colors">Yes</span>
+                <div className="col-span-2 bg-brand-gold-50 p-4 sm:p-6 rounded-2xl border-2 border-brand-gold-200 mt-2 transition-all hover:border-brand-gold-400">
+                   <label className="block text-base sm:text-lg font-extrabold text-slate-800 mb-3 sm:mb-4">Are you of Ibeno origin? <span className="text-red-500">*</span></label>
+                   <div className="flex space-x-6 sm:space-x-8">
+                     <label className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group">
+                       <input type="radio" name="is_ibeno_origin" value="true" checked={formData.is_ibeno_origin === 'true'} onChange={handleInputChange} className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green-600 focus:ring-brand-green-600 border-slate-400" />
+                       <span className="text-lg sm:text-xl text-slate-800 font-bold group-hover:text-brand-green-700 transition-colors">Yes</span>
                      </label>
-                     <label className="flex items-center space-x-3 cursor-pointer group">
-                       <input type="radio" name="is_ibeno_origin" value="false" checked={formData.is_ibeno_origin === 'false'} onChange={handleInputChange} className="w-6 h-6 text-red-600 focus:ring-red-600 border-slate-400" />
-                       <span className="text-xl text-slate-800 font-bold group-hover:text-red-700 transition-colors">No</span>
+                     <label className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group">
+                       <input type="radio" name="is_ibeno_origin" value="false" checked={formData.is_ibeno_origin === 'false'} onChange={handleInputChange} className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 focus:ring-red-600 border-slate-400" />
+                       <span className="text-lg sm:text-xl text-slate-800 font-bold group-hover:text-red-700 transition-colors">No</span>
                      </label>
                    </div>
-                   {errors.is_ibeno_origin && <p className="text-red-700 text-sm mt-4 font-bold bg-red-100 p-3 rounded-xl animate-pop">{errors.is_ibeno_origin}</p>}
+                   {errors.is_ibeno_origin && <p className="text-red-700 text-sm mt-3 sm:mt-4 font-bold bg-red-100 p-3 rounded-xl animate-pop">{errors.is_ibeno_origin}</p>}
                 </div>
 
-                <div className="col-span-2 pt-6 mt-4 border-t border-slate-200">
-                  <h3 className="text-2xl font-extrabold text-slate-800 mb-6">Academic Information</h3>
+                <div className="col-span-2 pt-4 sm:pt-6 mt-2 sm:mt-4 border-t border-slate-200">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-slate-800 mb-4 sm:mb-6">Academic Information</h3>
                 </div>
                 
                 <div className="col-span-2 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Name of Tertiary Institution</label>
-                  <input type="text" name="institution" value={formData.institution || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Name of Tertiary Institution</label>
+                  <input type="text" name="institution" value={formData.institution || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.institution && <p className="text-red-500 text-sm mt-1 font-medium">{errors.institution}</p>}
                 </div>
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Faculty</label>
-                  <input type="text" name="faculty" value={formData.faculty || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Faculty</label>
+                  <input type="text" name="faculty" value={formData.faculty || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.faculty && <p className="text-red-500 text-sm mt-1 font-medium">{errors.faculty}</p>}
                 </div>
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Department / Course of Study</label>
-                  <input type="text" name="course" value={formData.course || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Department / Course of Study</label>
+                  <input type="text" name="course" value={formData.course || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.course && <p className="text-red-500 text-sm mt-1 font-medium">{errors.course}</p>}
                 </div>
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Current Level</label>
-                  <input type="text" name="level" value={formData.level || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Current Level</label>
+                  <input type="text" name="level" value={formData.level || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                   {errors.level && <p className="text-red-500 text-sm mt-1 font-medium">{errors.level}</p>}
                 </div>
                 
                 {formData.student_category === 'returning' && (
                   <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
-                    <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Current Academic CGPA</label>
-                    <input type="text" name="cgpa" value={formData.cgpa || ''} onChange={handleInputChange} placeholder="e.g. 3.50" className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Current Academic CGPA</label>
+                    <input type="text" name="cgpa" value={formData.cgpa || ''} onChange={handleInputChange} placeholder="e.g. 3.50" className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                     {errors.cgpa && <p className="text-red-500 text-sm mt-1 font-medium">{errors.cgpa}</p>}
                   </div>
                 )}
                 
                 {formData.student_category === 'fresh' && (
                   <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
-                    <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number</label>
-                    <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number</label>
+                    <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                     {errors.jamb_number && <p className="text-red-500 text-sm mt-1 font-medium">{errors.jamb_number}</p>}
                     <p className="text-xs text-slate-500 mt-1">Enter your JAMB number as it appears on your result slip (letters will be converted to uppercase automatically).</p>
                   </div>
@@ -306,14 +347,14 @@ export default function ApplicationForm() {
                 {formData.student_category === 'returning' && (
                   <>
                     <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
-                      <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">Matriculation Number</label>
-                      <input type="text" name="matric_number" value={formData.matric_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">Matriculation Number</label>
+                      <input type="text" name="matric_number" value={formData.matric_number || ''} onChange={handleInputChange} onBlur={(e) => setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value.trim().toUpperCase() }))} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                       {errors.matric_number && <p className="text-red-500 text-sm mt-1 font-medium">{errors.matric_number}</p>}
                       <p className="text-xs text-slate-500 mt-1">Enter your matriculation number as it appears on your student ID (letters will be converted to uppercase automatically).</p>
                     </div>
                     <div className="col-span-2 md:col-span-1 group animate-fade-in-up">
-                      <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number (Optional)</label>
-                      <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">JAMB Registration Number (Optional)</label>
+                      <input type="text" name="jamb_number" value={formData.jamb_number || ''} onChange={handleInputChange} className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" />
                       {errors.jamb_number && <p className="text-red-500 text-sm mt-1 font-medium">{errors.jamb_number}</p>}
                     </div>
                   </>
@@ -324,11 +365,11 @@ export default function ApplicationForm() {
 
           {/* STEP 2: Documents */}
           {currentStep === 2 && (
-            <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Required Documents</h2>
-              <p className="text-lg text-slate-700 font-medium">Please upload all the required documents for your category (<span className="font-bold text-brand-green-700">{formData.student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student'}</span>).</p>
+            <div className="space-y-6 sm:space-y-8 animate-slide-in-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 sm:pb-4">Required Documents</h2>
+              <p className="text-base sm:text-lg text-slate-700 font-medium">Please upload all the required documents for your category (<span className="font-bold text-brand-green-700">{formData.student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student'}</span>).</p>
               
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {(formData.student_category === 'fresh' ? documentRequirements.fresh : documentRequirements.returning).map((doc, idx) => {
                   const isMultiple = doc.id === 'previous_school_fees';
                   return (
@@ -352,14 +393,14 @@ export default function ApplicationForm() {
 
           {/* STEP 3: Bank & Identity Details */}
           {currentStep === 3 && (
-            <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Bank &amp; Identity Details</h2>
-              <p className="text-lg text-slate-600 font-medium">Please enter your National Identification Number (NIN) and valid Nigerian bank account details for verification and scholarship disbursement.</p>
+            <div className="space-y-6 sm:space-y-8 animate-slide-in-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 sm:pb-4">Bank &amp; Identity Details</h2>
+              <p className="text-base sm:text-lg text-slate-600 font-medium">Please enter your National Identification Number (NIN) and valid Nigerian bank account details for verification and scholarship disbursement.</p>
               
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                 {/* NIN Field */}
                 <div className="col-span-2 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">
                     National Identification Number (NIN) <span className="text-red-500">*</span>
                   </label>
                   <input 
@@ -374,7 +415,7 @@ export default function ApplicationForm() {
                       setErrors({ ...errors, nin: '' });
                     }}
                     placeholder="Enter 11-digit NIN (e.g. 12345678901)" 
-                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
+                    className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
                   />
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-xs text-slate-500">Must accept exactly 11 numeric digits (no letters or symbols).</p>
@@ -387,14 +428,14 @@ export default function ApplicationForm() {
 
                 {/* Bank Name Dropdown */}
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">
                     Bank Name <span className="text-red-500">*</span>
                   </label>
                   <select 
                     name="bank_name" 
                     value={formData.bank_name || ''} 
                     onChange={handleInputChange} 
-                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white"
+                    className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white"
                   >
                     <option value="" className="text-slate-500 bg-white">-- Select Bank --</option>
                     {NIGERIAN_BANKS.map((bank) => (
@@ -411,7 +452,7 @@ export default function ApplicationForm() {
 
                 {/* Bank Account Number */}
                 <div className="col-span-2 md:col-span-1 group">
-                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">
                     Bank Account Number <span className="text-red-500">*</span>
                   </label>
                   <input 
@@ -426,7 +467,7 @@ export default function ApplicationForm() {
                       setErrors({ ...errors, account_number: '' });
                     }}
                     placeholder="Enter 10-digit NUBAN (e.g. 0123456789)" 
-                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
+                    className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
                   />
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-xs text-slate-500">Must be exactly 10 numeric digits.</p>
@@ -440,7 +481,7 @@ export default function ApplicationForm() {
                 {/* Other Bank Name Text Input (revealed if 'Other' selected) */}
                 {formData.bank_name === 'Other' && (
                   <div className="col-span-2 group animate-fade-in-up">
-                    <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5 sm:mb-2 transition-colors group-hover:text-brand-green-700">
                       Specify Bank Name <span className="text-red-500">*</span>
                     </label>
                     <input 
@@ -449,7 +490,7 @@ export default function ApplicationForm() {
                       value={formData.bank_name_other || ''} 
                       onChange={handleInputChange} 
                       placeholder="Enter the official name of your bank" 
-                      className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" 
+                      className="w-full p-3.5 sm:p-4 text-base sm:text-lg text-slate-900 border border-slate-300 rounded-xl sm:rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" 
                     />
                     {errors.bank_name_other && <p className="text-red-500 text-sm mt-1 font-medium animate-pop">{errors.bank_name_other}</p>}
                   </div>
@@ -460,62 +501,62 @@ export default function ApplicationForm() {
 
           {/* STEP 4: Review */}
           {currentStep === 4 && (
-            <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Review Application</h2>
-              <p className="text-lg text-slate-700 font-medium">Please review your information before final submission.</p>
+            <div className="space-y-6 sm:space-y-8 animate-slide-in-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 sm:pb-4">Review Application</h2>
+              <p className="text-base sm:text-lg text-slate-700 font-medium">Please review your information before final submission.</p>
               
-              <div className="bg-slate-50/50 p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8 text-base transition-all hover:bg-slate-50">
-                <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+              <div className="bg-slate-50/50 p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm space-y-6 sm:space-y-8 text-base transition-all hover:bg-slate-50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-y-6 sm:gap-x-8">
                   <div>
                     <div className="text-slate-500 font-bold mb-1 uppercase tracking-wider text-xs">Applicant</div>
-                    <div className="font-extrabold text-xl text-slate-900">{formData.full_name}</div>
+                    <div className="font-extrabold text-lg sm:text-xl text-slate-900 break-words">{formData.full_name}</div>
                   </div>
                   <div>
                     <div className="text-slate-500 font-bold mb-1 uppercase tracking-wider text-xs">State of Origin</div>
-                    <div className="font-extrabold text-xl text-slate-900">{formData.state_of_origin}</div>
+                    <div className="font-extrabold text-lg sm:text-xl text-slate-900">{formData.state_of_origin}</div>
                   </div>
                   <div>
                     <div className="text-slate-500 font-bold mb-1 uppercase tracking-wider text-xs">Institution</div>
-                    <div className="font-extrabold text-xl text-slate-900">{formData.institution}</div>
+                    <div className="font-extrabold text-lg sm:text-xl text-slate-900 break-words">{formData.institution}</div>
                   </div>
                   <div>
                     <div className="text-slate-500 font-bold mb-1 uppercase tracking-wider text-xs">Student Category</div>
-                    <div className="font-extrabold text-xl text-brand-green-700">{formData.student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student / Beneficiary'}</div>
+                    <div className="font-extrabold text-lg sm:text-xl text-brand-green-700">{formData.student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student / Beneficiary'}</div>
                   </div>
 
                   {/* Bank & Identity Details in Review */}
-                  <div className="col-span-2 pt-6 border-t border-slate-200">
-                    <div className="text-slate-500 font-bold mb-4 uppercase tracking-wider text-xs">Bank &amp; Identity Details</div>
-                    <div className="grid sm:grid-cols-3 gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="col-span-1 sm:col-span-2 pt-4 sm:pt-6 border-t border-slate-200">
+                    <div className="text-slate-500 font-bold mb-3 sm:mb-4 uppercase tracking-wider text-xs">Bank &amp; Identity Details</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm">
                       <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">NIN</div>
-                        <div className="font-mono font-bold text-slate-900 text-lg tracking-wider">{formData.nin || '-'}</div>
+                        <div className="font-mono font-bold text-slate-900 text-base sm:text-lg tracking-wider">{formData.nin || '-'}</div>
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bank Name</div>
-                        <div className="font-bold text-slate-900 text-lg">{formData.bank_name === 'Other' ? (formData.bank_name_other || 'Other') : (formData.bank_name || '-')}</div>
+                        <div className="font-bold text-slate-900 text-base sm:text-lg break-words">{formData.bank_name === 'Other' ? (formData.bank_name_other || 'Other') : (formData.bank_name || '-')}</div>
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Account Number</div>
-                        <div className="font-mono font-bold text-slate-900 text-lg tracking-wider">{formData.account_number || '-'}</div>
+                        <div className="font-mono font-bold text-slate-900 text-base sm:text-lg tracking-wider">{formData.account_number || '-'}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="col-span-2 pt-2">
-                    <div className="text-slate-500 font-bold mb-4 uppercase tracking-wider text-xs">Uploaded Documents</div>
-                    <ul className="grid sm:grid-cols-2 gap-4">
+                  <div className="col-span-1 sm:col-span-2 pt-2">
+                    <div className="text-slate-500 font-bold mb-3 sm:mb-4 uppercase tracking-wider text-xs">Uploaded Documents</div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {(formData.student_category === 'fresh' ? documentRequirements.fresh : documentRequirements.returning).map(doc => {
                         const uploaded = files[doc.id] && files[doc.id].length > 0;
                         const count = uploaded ? files[doc.id].length : 0;
                         return (
-                          <li key={doc.id} className="flex flex-col text-slate-800 font-bold bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                          <li key={doc.id} className="flex flex-col text-slate-800 font-bold bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
                             <div className="flex items-center">
-                              {uploaded ? <CheckCircle2 className="w-6 h-6 text-brand-green-500 mr-3 shrink-0 animate-pop" /> : <span className="w-6 h-6 mr-3 shrink-0 bg-slate-200 rounded-full"></span>}
-                              <span>{doc.name}</span>
+                              {uploaded ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-brand-green-500 mr-2.5 sm:mr-3 shrink-0 animate-pop" /> : <span className="w-5 h-5 sm:w-6 sm:h-6 mr-2.5 sm:mr-3 shrink-0 bg-slate-200 rounded-full"></span>}
+                              <span className="text-sm sm:text-base leading-snug">{doc.name}</span>
                             </div>
                             {uploaded && count > 1 && (
-                              <div className="ml-9 mt-1 text-sm text-brand-green-700">{count} files attached</div>
+                              <div className="ml-8 sm:ml-9 mt-1 text-xs sm:text-sm text-brand-green-700">{count} files attached</div>
                             )}
                           </li>
                         )
@@ -529,41 +570,61 @@ export default function ApplicationForm() {
 
           {/* STEP 5: Submit */}
           {currentStep === 5 && (
-            <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Declaration &amp; Submission</h2>
+            <div className="space-y-6 sm:space-y-8 animate-slide-in-right">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-3 sm:pb-4">Declaration &amp; Submission</h2>
               
-              <div className="bg-brand-gold-50 border-2 border-brand-gold-300 p-8 rounded-3xl space-y-6 transition-all hover:shadow-lg">
-                <p className="font-extrabold text-slate-800 text-xl leading-relaxed">I certify that the information and documents submitted are accurate, authentic, current, legible and properly identifiable.</p>
+              <div className="bg-brand-gold-50 border-2 border-brand-gold-300 p-5 sm:p-8 rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-6 transition-all hover:shadow-lg">
+                <p className="font-extrabold text-slate-800 text-lg sm:text-xl leading-relaxed">I certify that the information and documents submitted are accurate, authentic, current, legible and properly identifiable.</p>
                 
-                <label className="flex items-start space-x-4 cursor-pointer group bg-white p-4 rounded-2xl border border-brand-gold-200 transition-colors hover:border-brand-gold-400">
+                <label className="flex items-start space-x-3 sm:space-x-4 cursor-pointer group bg-white p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-brand-gold-200 transition-colors hover:border-brand-gold-400">
                   <input type="checkbox" name="declaration" checked={formData.declaration === 'true'} onChange={(e) => {
                     setFormData({...formData, declaration: e.target.checked ? 'true' : ''});
                     setErrors({...errors, declaration: ''});
-                  }} className="mt-1 w-6 h-6 text-brand-green-600 rounded border-slate-300 focus:ring-brand-green-600 transition-all" />
-                  <span className="text-slate-800 font-bold text-lg group-hover:text-brand-green-900 transition-colors">I confirm that the information and documents I have submitted are accurate and authentic.</span>
+                  }} className="mt-1 w-5 h-5 sm:w-6 sm:h-6 text-brand-green-600 rounded border-slate-300 focus:ring-brand-green-600 transition-all shrink-0" />
+                  <span className="text-slate-800 font-bold text-base sm:text-lg group-hover:text-brand-green-900 transition-colors leading-snug">I confirm that the information and documents I have submitted are accurate and authentic.</span>
                 </label>
                 {errors.declaration && <p className="text-red-700 text-sm font-bold bg-red-100 p-3 rounded-xl animate-pop">{errors.declaration}</p>}
                 
-                <p className="text-base text-slate-700 font-medium">I understand that submitting false or fraudulent documents may result in disqualification and may be reported to the appropriate authorities.</p>
+                <p className="text-sm sm:text-base text-slate-700 font-medium">I understand that submitting false or fraudulent documents may result in disqualification and may be reported to the appropriate authorities.</p>
               </div>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center pt-8 border-t border-slate-200">
+          <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-6 sm:pt-8 border-t border-slate-200">
             {currentStep > 0 ? (
-              <button type="button" onClick={prevStep} disabled={isSubmitting} className="flex items-center px-6 py-4 bg-white border-2 border-slate-300 text-slate-800 text-lg font-bold rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-300 disabled:opacity-50">
-                <ChevronLeft className="w-6 h-6 mr-2" /> Back
+              <button 
+                type="button" 
+                onClick={prevStep} 
+                disabled={isSubmitting} 
+                className="w-full sm:w-auto flex items-center justify-center px-6 py-3.5 sm:py-4 bg-white border-2 border-slate-300 text-slate-800 text-base sm:text-lg font-bold rounded-xl sm:rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-300 disabled:opacity-50 cursor-pointer"
+              >
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6 mr-1.5 sm:mr-2" /> Back
               </button>
-            ) : <div></div>}
+            ) : <div className="hidden sm:block"></div>}
             
             {currentStep < STEPS.length - 1 ? (
-              <button type="button" onClick={nextStep} className="group flex items-center px-10 py-4 bg-brand-green-700 text-white text-lg font-bold rounded-2xl hover:bg-brand-green-800 hover:-translate-y-1 shadow-lg hover:shadow-xl transition-all duration-300">
-                Next <ChevronRight className="w-6 h-6 ml-2 transform group-hover:translate-x-1 transition-transform" />
+              <button 
+                type="button" 
+                onClick={nextStep} 
+                className="w-full sm:w-auto group flex items-center justify-center px-8 sm:px-10 py-3.5 sm:py-4 bg-brand-green-700 text-white text-base sm:text-lg font-bold rounded-xl sm:rounded-2xl hover:bg-brand-green-800 hover:-translate-y-0.5 sm:hover:-translate-y-1 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
+                Next <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 ml-1.5 sm:ml-2 transform group-hover:translate-x-1 transition-transform" />
               </button>
             ) : (
-              <button type="submit" disabled={isSubmitting} className="group flex items-center px-12 py-4 bg-brand-green-700 text-white text-xl font-extrabold rounded-2xl hover:bg-brand-green-800 hover:-translate-y-1 shadow-xl hover:shadow-2xl transition-all duration-300 disabled:opacity-70 disabled:hover:transform-none">
-                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              <button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="w-full sm:w-auto group flex items-center justify-center px-8 sm:px-12 py-3.5 sm:py-4 bg-brand-green-700 text-white text-base sm:text-xl font-extrabold rounded-xl sm:rounded-2xl hover:bg-brand-green-800 hover:-translate-y-0.5 sm:hover:-translate-y-1 shadow-xl hover:shadow-2xl transition-all duration-300 disabled:opacity-70 disabled:hover:transform-none cursor-pointer"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin mr-2 shrink-0" />
+                    <span>Submitting Application...</span>
+                  </>
+                ) : (
+                  <span>Submit Application</span>
+                )}
               </button>
             )}
           </div>
