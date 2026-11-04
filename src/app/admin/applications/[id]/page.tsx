@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Download, FileText, Calendar, MapPin, Phone, Mail, GraduationCap } from 'lucide-react';
+import AdminLogoutButton from '@/components/AdminLogoutButton';
+import AdminSessionManager from '@/components/AdminSessionManager';
 
 export default async function ApplicationDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +25,7 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans pb-12">
+      <AdminSessionManager />
       <header className="bg-slate-900 text-white p-4 shadow-md">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold flex items-center">
@@ -31,6 +34,9 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
             </Link>
             Application Details
           </h1>
+          <div className="flex items-center gap-3">
+            <AdminLogoutButton />
+          </div>
         </div>
       </header>
 

@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import Link from 'next/link';
 import { Users, FileText, CheckCircle, Clock } from 'lucide-react';
 import { siteConfig } from '@/config';
+import AdminLogoutButton from '@/components/AdminLogoutButton';
+import AdminSessionManager from '@/components/AdminSessionManager';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +45,13 @@ export default async function AdminDashboard({
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
+      <AdminSessionManager />
       <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold tracking-tight">{siteConfig.shortOrganizationName} Admin Dashboard</h1>
-          <div className="flex gap-4">
-             <span className="text-slate-300 font-medium text-sm py-2 bg-slate-800 px-4 rounded-full">Logged in as Admin</span>
+          <div className="flex items-center gap-3">
+             <span className="hidden sm:inline-block text-slate-300 font-medium text-sm py-1.5 bg-slate-800 px-3.5 rounded-lg border border-slate-700">Logged in as Admin</span>
+             <AdminLogoutButton />
           </div>
         </div>
       </header>
