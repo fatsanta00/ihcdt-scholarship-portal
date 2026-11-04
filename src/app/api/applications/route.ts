@@ -166,8 +166,21 @@ export async function POST(req: NextRequest) {
       timeout: 30000,
     });
 
-    // Send email asynchronously without blocking the response
-    sendConfirmationEmail(result.email, result.full_name, result.reference_number, result.student_category).catch(console.error);
+    // Send confirmation email after application and documents are safely stored in DB/Storage
+    // Wrapped in try/catch to ensure email issues never fail an otherwise successful application
+    try {
+      await sendConfirmationEmail({
+        to: result.email,
+        applicantName: result.full_name,
+        referenceNumber: result.reference_number,
+        category: result.student_category,
+        institution: result.institution,
+        course: result.course,
+        level: result.level,
+      });
+    } catch (emailErr: any) {
+      console.error('[Application Submission Notice]: Email sending failed, but application was saved successfully:', emailErr?.message || emailErr);
+    }
 
     return NextResponse.json({ success: true, reference_number: result.reference_number });
   } catch (error: any) {
