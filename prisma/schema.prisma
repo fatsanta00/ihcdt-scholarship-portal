@@ -26,6 +26,9 @@ model Application {
   cgpa             String?
   matric_number    String?  @unique
   jamb_number      String?  @unique
+  nin              String?
+  bank_name        String?
+  account_number   String?
   status           String   @default("Submitted") // Submitted, Under Review, Verified, Rejected
   submitted_at     DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -40,6 +43,7 @@ model Application {
   @@index([institution])
   @@index([matric_number])
   @@index([jamb_number])
+  @@index([nin])
 }
 
 model Document {

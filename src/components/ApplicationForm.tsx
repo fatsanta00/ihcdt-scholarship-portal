@@ -10,8 +10,31 @@ const STEPS = [
   'Student Category',
   'Applicant Details',
   'Required Documents',
+  'Bank & Identity Details',
   'Review',
   'Submit'
+];
+
+const NIGERIAN_BANKS = [
+  'Access Bank',
+  'First Bank',
+  'GTBank',
+  'UBA',
+  'Zenith Bank',
+  'Fidelity Bank',
+  'FCMB',
+  'Union Bank',
+  'Sterling Bank',
+  'Stanbic IBTC',
+  'Wema Bank',
+  'Ecobank',
+  'Polaris Bank',
+  'Jaiz Bank',
+  'Kuda Bank',
+  'Moniepoint',
+  'Opay',
+  'PalmPay',
+  'Providus Bank',
 ];
 
 export default function ApplicationForm() {
@@ -68,7 +91,25 @@ export default function ApplicationForm() {
           newErrors[doc.id] = 'This document is required';
         }
       });
-    } else if (currentStep === 4) {
+    } else if (currentStep === 3) {
+      if (!formData.nin) {
+        newErrors.nin = 'National Identification Number (NIN) is required';
+      } else if (!/^\d{11}$/.test(formData.nin)) {
+        newErrors.nin = 'NIN must be exactly 11 numeric digits';
+      }
+
+      if (!formData.bank_name) {
+        newErrors.bank_name = 'Please select a bank';
+      } else if (formData.bank_name === 'Other' && (!formData.bank_name_other || !formData.bank_name_other.trim())) {
+        newErrors.bank_name_other = 'Please specify your bank name';
+      }
+
+      if (!formData.account_number) {
+        newErrors.account_number = 'Bank account number is required';
+      } else if (!/^\d{10}$/.test(formData.account_number)) {
+        newErrors.account_number = 'Bank account number must be exactly 10 numeric digits';
+      }
+    } else if (currentStep === 5) {
        if (!formData.declaration) newErrors.declaration = 'You must agree to the declaration to submit';
     }
 
@@ -309,8 +350,116 @@ export default function ApplicationForm() {
             </div>
           )}
 
-          {/* STEP 3: Review */}
+          {/* STEP 3: Bank & Identity Details */}
           {currentStep === 3 && (
+            <div className="space-y-8 animate-slide-in-right">
+              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Bank &amp; Identity Details</h2>
+              <p className="text-lg text-slate-600 font-medium">Please enter your National Identification Number (NIN) and valid Nigerian bank account details for verification and scholarship disbursement.</p>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* NIN Field */}
+                <div className="col-span-2 group">
+                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                    National Identification Number (NIN) <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    inputMode="numeric"
+                    maxLength={11}
+                    name="nin" 
+                    value={formData.nin || ''} 
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 11);
+                      setFormData({ ...formData, nin: val });
+                      setErrors({ ...errors, nin: '' });
+                    }}
+                    placeholder="Enter 11-digit NIN (e.g. 12345678901)" 
+                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
+                  />
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-slate-500">Must accept exactly 11 numeric digits (no letters or symbols).</p>
+                    <span className={`text-xs font-mono font-bold ${(formData.nin || '').length === 11 ? 'text-brand-green-700' : 'text-slate-400'}`}>
+                      {(formData.nin || '').length}/11 digits
+                    </span>
+                  </div>
+                  {errors.nin && <p className="text-red-500 text-sm mt-1 font-medium animate-pop">{errors.nin}</p>}
+                </div>
+
+                {/* Bank Name Dropdown */}
+                <div className="col-span-2 md:col-span-1 group">
+                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                    Bank Name <span className="text-red-500">*</span>
+                  </label>
+                  <select 
+                    name="bank_name" 
+                    value={formData.bank_name || ''} 
+                    onChange={handleInputChange} 
+                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white"
+                  >
+                    <option value="" className="text-slate-500 bg-white">-- Select Bank --</option>
+                    {NIGERIAN_BANKS.map((bank) => (
+                      <option key={bank} value={bank} className="text-slate-900 bg-white">
+                        {bank}
+                      </option>
+                    ))}
+                    <option value="Other" className="text-slate-900 bg-white font-bold">
+                      Other (Specify below)
+                    </option>
+                  </select>
+                  {errors.bank_name && <p className="text-red-500 text-sm mt-1 font-medium animate-pop">{errors.bank_name}</p>}
+                </div>
+
+                {/* Bank Account Number */}
+                <div className="col-span-2 md:col-span-1 group">
+                  <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                    Bank Account Number <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    inputMode="numeric"
+                    maxLength={10}
+                    name="account_number" 
+                    value={formData.account_number || ''} 
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, account_number: val });
+                      setErrors({ ...errors, account_number: '' });
+                    }}
+                    placeholder="Enter 10-digit NUBAN (e.g. 0123456789)" 
+                    className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white tracking-widest font-mono" 
+                  />
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-slate-500">Must be exactly 10 numeric digits.</p>
+                    <span className={`text-xs font-mono font-bold ${(formData.account_number || '').length === 10 ? 'text-brand-green-700' : 'text-slate-400'}`}>
+                      {(formData.account_number || '').length}/10 digits
+                    </span>
+                  </div>
+                  {errors.account_number && <p className="text-red-500 text-sm mt-1 font-medium animate-pop">{errors.account_number}</p>}
+                </div>
+
+                {/* Other Bank Name Text Input (revealed if 'Other' selected) */}
+                {formData.bank_name === 'Other' && (
+                  <div className="col-span-2 group animate-fade-in-up">
+                    <label className="block text-sm font-bold text-slate-700 mb-2 transition-colors group-hover:text-brand-green-700">
+                      Specify Bank Name <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      name="bank_name_other" 
+                      value={formData.bank_name_other || ''} 
+                      onChange={handleInputChange} 
+                      placeholder="Enter the official name of your bank" 
+                      className="w-full p-4 text-lg text-slate-900 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-brand-green-500 outline-none transition-all hover:border-brand-green-400 bg-slate-50 focus:bg-white" 
+                    />
+                    {errors.bank_name_other && <p className="text-red-500 text-sm mt-1 font-medium animate-pop">{errors.bank_name_other}</p>}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Review */}
+          {currentStep === 4 && (
             <div className="space-y-8 animate-slide-in-right">
               <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Review Application</h2>
               <p className="text-lg text-slate-700 font-medium">Please review your information before final submission.</p>
@@ -333,7 +482,27 @@ export default function ApplicationForm() {
                     <div className="text-slate-500 font-bold mb-1 uppercase tracking-wider text-xs">Student Category</div>
                     <div className="font-extrabold text-xl text-brand-green-700">{formData.student_category === 'fresh' ? 'Fresh Intake' : 'Returning Student / Beneficiary'}</div>
                   </div>
-                  <div className="col-span-2 mt-4 pt-6 border-t border-slate-200">
+
+                  {/* Bank & Identity Details in Review */}
+                  <div className="col-span-2 pt-6 border-t border-slate-200">
+                    <div className="text-slate-500 font-bold mb-4 uppercase tracking-wider text-xs">Bank &amp; Identity Details</div>
+                    <div className="grid sm:grid-cols-3 gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">NIN</div>
+                        <div className="font-mono font-bold text-slate-900 text-lg tracking-wider">{formData.nin || '-'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Bank Name</div>
+                        <div className="font-bold text-slate-900 text-lg">{formData.bank_name === 'Other' ? (formData.bank_name_other || 'Other') : (formData.bank_name || '-')}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Account Number</div>
+                        <div className="font-mono font-bold text-slate-900 text-lg tracking-wider">{formData.account_number || '-'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 pt-2">
                     <div className="text-slate-500 font-bold mb-4 uppercase tracking-wider text-xs">Uploaded Documents</div>
                     <ul className="grid sm:grid-cols-2 gap-4">
                       {(formData.student_category === 'fresh' ? documentRequirements.fresh : documentRequirements.returning).map(doc => {
@@ -358,10 +527,10 @@ export default function ApplicationForm() {
             </div>
           )}
 
-          {/* STEP 4: Submit */}
-          {currentStep === 4 && (
+          {/* STEP 5: Submit */}
+          {currentStep === 5 && (
             <div className="space-y-8 animate-slide-in-right">
-              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Declaration & Submission</h2>
+              <h2 className="text-3xl font-extrabold text-slate-800 border-b border-slate-100 pb-4">Declaration &amp; Submission</h2>
               
               <div className="bg-brand-gold-50 border-2 border-brand-gold-300 p-8 rounded-3xl space-y-6 transition-all hover:shadow-lg">
                 <p className="font-extrabold text-slate-800 text-xl leading-relaxed">I certify that the information and documents submitted are accurate, authentic, current, legible and properly identifiable.</p>

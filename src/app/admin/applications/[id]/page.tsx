@@ -106,6 +106,18 @@ export default async function ApplicationDetail({ params }: { params: Promise<{ 
                 <span className="text-slate-500 font-semibold col-span-1">Ibeno Origin Verified (Form)</span>
                 <span className="text-slate-800 font-medium col-span-2">{application.is_ibeno_origin ? 'Yes' : 'No'}</span>
               </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
+                <span className="text-slate-500 font-semibold col-span-1">NIN</span>
+                <span className="text-slate-800 font-medium font-mono col-span-2">{application.nin || '-'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
+                <span className="text-slate-500 font-semibold col-span-1">Bank Name</span>
+                <span className="text-slate-800 font-medium col-span-2">{application.bank_name || '-'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-slate-50 pb-3">
+                <span className="text-slate-500 font-semibold col-span-1">Account Number</span>
+                <span className="text-slate-800 font-medium font-mono col-span-2">{application.account_number || '-'}</span>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-slate-500 font-semibold col-span-1">Address</span>
                 <span className="text-slate-800 font-medium col-span-2">{application.address}</span>

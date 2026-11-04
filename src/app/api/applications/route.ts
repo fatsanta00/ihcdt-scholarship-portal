@@ -38,8 +38,24 @@ export async function POST(req: NextRequest) {
     const jamb_number = (formData.get('jamb_number') as string) || null;
     const is_ibeno_origin = formData.get('is_ibeno_origin') === 'true';
 
+    const nin = (formData.get('nin') as string)?.trim() || null;
+    const bank_name_raw = (formData.get('bank_name') as string)?.trim() || '';
+    const bank_name_other = (formData.get('bank_name_other') as string)?.trim() || '';
+    const bank_name = (bank_name_raw === 'Other' ? bank_name_other : bank_name_raw) || null;
+    const account_number = (formData.get('account_number') as string)?.trim() || null;
+
     if (!is_ibeno_origin) {
       return NextResponse.json({ error: 'This scholarship is intended only for students of Ibeno origin.' }, { status: 400 });
+    }
+
+    if (!nin || !/^\d{11}$/.test(nin)) {
+      return NextResponse.json({ error: 'A valid 11-digit National Identification Number (NIN) is required.' }, { status: 400 });
+    }
+    if (!account_number || !/^\d{10}$/.test(account_number)) {
+      return NextResponse.json({ error: 'A valid 10-digit Bank Account Number is required.' }, { status: 400 });
+    }
+    if (!bank_name) {
+      return NextResponse.json({ error: 'Bank name is required.' }, { status: 400 });
     }
 
     // Validate JAMB/Matric logic based on category
@@ -121,6 +137,9 @@ export async function POST(req: NextRequest) {
           cgpa,
           matric_number: normalizedMatric,
           jamb_number: normalizedJamb,
+          nin,
+          bank_name,
+          account_number,
           is_ibeno_origin,
         },
       });
