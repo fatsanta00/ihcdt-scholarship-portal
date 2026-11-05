@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
     const jamb_number = (formData.get('jamb_number') as string) || null;
     const is_ibeno_origin = formData.get('is_ibeno_origin') === 'true';
 
-    const nin = (formData.get('nin') as string)?.trim() || null;
+    const rawNin = (formData.get('nin') as string)?.trim() || '';
+    const nin = rawNin.replace(/\D/g, '') || null;
     const bank_name_raw = (formData.get('bank_name') as string)?.trim() || '';
     const bank_name_other = (formData.get('bank_name_other') as string)?.trim() || '';
     const bank_name = (bank_name_raw === 'Other' ? bank_name_other : bank_name_raw) || null;
@@ -71,12 +72,11 @@ export async function POST(req: NextRequest) {
     const normalizedMatric = matric_number ? matric_number.trim().toUpperCase() : null;
 
     // ─── Concurrent duplicate checks ────────────────────────────────────────────
-    // All three lookups run simultaneously via Promise.all rather than sequentially.
-    // Each query uses an indexed column and selects only id + reference_number,
-    // so they are fast point-lookups regardless of dataset size.
-    const [existingByEmail, existingByJamb, existingByMatric] = await Promise.all([
+    // NIN is the primary unique identifier for preventing duplicate applications.
+    // In addition, JAMB and Matriculation numbers are checked concurrently.
+    const [existingByNin, existingByJamb, existingByMatric] = await Promise.all([
       db.application.findFirst({
-        where: { email },
+        where: { nin },
         select: { id: true, reference_number: true },
       }),
       normalizedJamb
@@ -93,9 +93,9 @@ export async function POST(req: NextRequest) {
         : Promise.resolve(null),
     ]);
 
-    if (existingByEmail) {
+    if (existingByNin) {
       return NextResponse.json(
-        { error: `An application has already been submitted using this email address (Ref: ${existingByEmail.reference_number}). Each applicant may only submit one application. If you believe this is an error, please contact the IHCDT Secretariat.` },
+        { error: `An application has already been submitted with this National Identification Number (NIN) (Ref: ${existingByNin.reference_number}). Each applicant may only submit one application. If you believe this is an error, please contact the IHCDT Secretariat.` },
         { status: 409 }
       );
     }
@@ -203,7 +203,11 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Application submission error:', error);
     if (error?.code === 'P2002') {
-      return NextResponse.json({ error: 'A duplicate application was detected. Please ensure your registration numbers are correct.' }, { status: 409 });
+      const target = error.meta?.target;
+      if (Array.isArray(target) && target.includes('nin')) {
+        return NextResponse.json({ error: 'An application has already been submitted with this National Identification Number (NIN).' }, { status: 409 });
+      }
+      return NextResponse.json({ error: 'A duplicate application was detected. Please ensure your National Identification Number (NIN) and registration numbers are correct.' }, { status: 409 });
     }
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
