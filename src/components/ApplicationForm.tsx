@@ -5,6 +5,7 @@ import { siteConfig, documentRequirements } from '@/config';
 import FileUpload from './FileUpload';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
+import { compressFiles } from '@/lib/imageCompression';
 
 const STEPS = [
   'Student Category',
@@ -130,44 +131,121 @@ export default function ApplicationForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep()) return;
     
     setIsSubmitting(true);
     setSubmitStatus('uploading');
+    setErrors(prev => ({ ...prev, submit: '' }));
     
     try {
+      // 1. Ensure all document images are compressed to keep payload comfortably under Vercel's 4.5 MB limit
+      const optimizedFilesRecord: Record<string, File[]> = {};
+      let totalBytes = 0;
+
+      for (const key of Object.keys(files)) {
+        const docFiles = files[key] || [];
+        const compressed = await compressFiles(docFiles);
+        optimizedFilesRecord[key] = compressed;
+        compressed.forEach(f => {
+          totalBytes += f.size;
+        });
+      }
+
+      // Pre-flight check: Vercel serverless request body ceiling is 4.5 MB
+      const MAX_PAYLOAD_LIMIT = 4.2 * 1024 * 1024;
+      if (totalBytes > MAX_PAYLOAD_LIMIT) {
+        throw new Error(
+          `Your uploaded documents total ${formatBytes(totalBytes)}, which exceeds the maximum server upload size (${formatBytes(MAX_PAYLOAD_LIMIT)}). Please compress your PDF files or upload clear photo images before submitting.`
+        );
+      }
+
       const submitData = new FormData();
       Object.keys(formData).forEach(key => {
         submitData.append(key, formData[key] === 'true' ? 'true' : formData[key] === 'false' ? 'false' : formData[key]);
       });
       
-      Object.keys(files).forEach(key => {
-        files[key].forEach(file => {
+      Object.keys(optimizedFilesRecord).forEach(key => {
+        optimizedFilesRecord[key].forEach(file => {
           submitData.append(`doc_${key}`, file);
         });
       });
 
       setSubmitStatus('saving');
 
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        body: submitData,
-      });
+      // Abort controller with 75-second timeout for mobile networks (MTN, Airtel, etc.)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 75000);
 
-      const data = await res.json();
+      let res: Response;
+      try {
+        res = await fetch('/api/applications', {
+          method: 'POST',
+          body: submitData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Safely inspect content-type before parsing to avoid JSON SyntaxError on server errors
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = null;
+
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+      }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Submission failed');
+        if (res.status === 413) {
+          throw new Error('Your uploaded documents exceed the maximum allowed server upload size (4.5 MB). Please upload compressed images or PDFs.');
+        }
+        if (res.status === 504 || res.status === 502) {
+          throw new Error('The portal server timed out while receiving your documents. Please check your internet connection and try submitting again.');
+        }
+        if (res.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try submitting again.');
+        }
+
+        const fallbackText = !data ? await res.text().catch(() => '') : '';
+        const errorMessage = data?.error || fallbackText || `Application submission failed (Server HTTP ${res.status}). Please try again.`;
+        throw new Error(errorMessage);
       }
 
       setSubmitStatus('done');
       router.push(`/success/${data.reference_number}`);
     } catch (err: any) {
       setSubmitStatus('error');
-      setErrors({ submit: err.message });
       setIsSubmitting(false);
+
+      let friendlyMessage = err?.message || 'An unexpected error occurred during submission. Please try again.';
+
+      if (err?.name === 'AbortError') {
+        friendlyMessage = 'The upload took too long and timed out. This often happens on slow mobile connections. Please verify your internet connection and tap Submit again.';
+      } else if (
+        friendlyMessage === 'Failed to fetch' ||
+        err?.name === 'TypeError' ||
+        friendlyMessage.toLowerCase().includes('network') ||
+        friendlyMessage.toLowerCase().includes('fetch')
+      ) {
+        friendlyMessage = 'Network connection interrupted: Unable to communicate with the scholarship portal. Please check your data connection and tap Submit again.';
+      }
+
+      setErrors(prev => ({ ...prev, submit: friendlyMessage }));
+      window.scrollTo({ top: 120, behavior: 'smooth' });
     }
   };
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { UploadCloud, X, File as FileIcon, AlertCircle } from 'lucide-react';
+import { UploadCloud, X, File as FileIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { siteConfig } from '@/config';
+import { compressFiles } from '@/lib/imageCompression';
 
 interface FileUploadProps {
   id: string;
@@ -17,6 +18,7 @@ interface FileUploadProps {
 
 export default function FileUpload({ id, title, required, files, error, multiple = false, maxFiles = 1, onChange }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatSize = (bytes: number) => {
@@ -27,7 +29,7 @@ export default function FileUpload({ id, title, required, files, error, multiple
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const processFiles = (newFiles: FileList | File[]) => {
+  const processFiles = async (newFiles: FileList | File[]) => {
     let validFiles: File[] = [];
     const filesArray = Array.from(newFiles);
     
@@ -43,18 +45,34 @@ export default function FileUpload({ id, title, required, files, error, multiple
       validFiles.push(newFile);
     }
 
-    if (multiple) {
-      const combined = [...files, ...validFiles];
-      if (combined.length > maxFiles) {
-        alert(`You can only upload up to ${maxFiles} files here.`);
-        onChange(combined.slice(0, maxFiles));
+    if (validFiles.length === 0) return;
+
+    setIsProcessing(true);
+    try {
+      // Auto-compress high-resolution mobile camera images to optimize upload speed and keep payload under limits
+      const optimizedFiles = await compressFiles(validFiles);
+
+      if (multiple) {
+        const combined = [...files, ...optimizedFiles];
+        if (combined.length > maxFiles) {
+          alert(`You can only upload up to ${maxFiles} files here.`);
+          onChange(combined.slice(0, maxFiles));
+        } else {
+          onChange(combined);
+        }
       } else {
-        onChange(combined);
+        onChange([optimizedFiles[0]]);
       }
-    } else {
-      if (validFiles.length > 0) {
+    } catch (err) {
+      console.warn('File processing error:', err);
+      // Fallback to validFiles if compression threw
+      if (multiple) {
+        onChange([...files, ...validFiles].slice(0, maxFiles));
+      } else {
         onChange([validFiles[0]]);
       }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -126,16 +144,26 @@ export default function FileUpload({ id, title, required, files, error, multiple
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !isProcessing && fileInputRef.current?.click()}
         >
           {isDragging && <div className="absolute inset-0 bg-brand-green-100 opacity-20 animate-pulse"></div>}
           <div className="relative z-10">
-            <UploadCloud className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 sm:mb-3 transition-colors duration-300 ${isDragging ? 'text-brand-green-600' : 'text-slate-400'}`} />
-            <p className="font-extrabold text-slate-700 text-sm sm:text-lg mb-1 leading-snug">{files.length > 0 ? 'Click to add more files or drag and drop' : 'Click to upload or drag and drop'}</p>
-            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
-              Accepted formats: {siteConfig.allowedFileExtensions.join(', ').toUpperCase()}<br/>
-              Maximum size: <span className="font-bold">{formatSize(siteConfig.maxFileSize)}</span>
-            </p>
+            {isProcessing ? (
+              <div className="flex flex-col items-center justify-center py-2 animate-pulse">
+                <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 text-brand-green-600 animate-spin mb-2" />
+                <p className="font-extrabold text-brand-green-800 text-sm sm:text-base">Optimizing document for fast upload...</p>
+                <p className="text-xs text-slate-500">Compressing high-resolution photo while preserving legibility</p>
+              </div>
+            ) : (
+              <>
+                <UploadCloud className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2 sm:mb-3 transition-colors duration-300 ${isDragging ? 'text-brand-green-600' : 'text-slate-400'}`} />
+                <p className="font-extrabold text-slate-700 text-sm sm:text-lg mb-1 leading-snug">{files.length > 0 ? 'Click to add more files or drag and drop' : 'Click to upload or drag and drop'}</p>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                  Accepted formats: {siteConfig.allowedFileExtensions.join(', ').toUpperCase()}<br/>
+                  Maximum size: <span className="font-bold">{formatSize(siteConfig.maxFileSize)}</span>
+                </p>
+              </>
+            )}
           </div>
           <input 
             type="file"
@@ -143,6 +171,7 @@ export default function FileUpload({ id, title, required, files, error, multiple
             className="hidden"
             accept={siteConfig.allowedFileExtensions.join(',')}
             multiple={multiple}
+            disabled={isProcessing}
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
                 processFiles(e.target.files);

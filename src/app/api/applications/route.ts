@@ -10,6 +10,9 @@ function generateReferenceNumber() {
   return `IHCDT-2026-${randomChars}`;
 }
 
+// Allow up to 60 seconds execution time on Vercel for blob uploads and DB transactions
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   try {
     const now = new Date();
